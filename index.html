@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Painel de Revisões - Granvia</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/modern-normalize/modern-normalize.min.css">
+<style>
+:root{
+  --granvia-blue:#0b4f8c;
+  --granvia-dark:#062b44;
+  --accent:#f2b705;
+  --bg:#f6f8fb;
+  --card:#ffffff;
+}
+body{font-family:Inter, Arial, sans-serif; margin:0; background:var(--bg); color:#123;}
+header{background:linear-gradient(90deg,var(--granvia-blue),var(--granvia-dark)); color:#fff; padding:18px 20px; display:flex; align-items:center; gap:16px}
+header img.logo{height:56px;}
+header h1{font-size:20px; margin:0; letter-spacing:0.6px}
+.container{max-width:1200px; margin:20px auto; padding:0 18px;}
+.grid{display:grid; grid-template-columns:1fr 380px; gap:18px; align-items:start;}
+.card{background:var(--card); border-radius:10px; box-shadow:0 6px 18px rgba(10,20,30,0.06); padding:16px;}
+table{width:100%; border-collapse:collapse; font-size:14px}
+th,td{padding:10px 8px; border-bottom:1px solid #eee; text-align:left; vertical-align:middle}
+th{background:#fafafa; font-weight:600}
+.kpis{display:flex; gap:12px}
+.kpi{flex:1; padding:12px; border-radius:8px; background:linear-gradient(180deg,#fff,#fbfdff); text-align:center}
+.kpi h2{margin:0; font-size:20px; color:var(--granvia-dark)}
+.small{font-size:12px; color:#666}
+.filters{display:flex; gap:8px; margin-bottom:8px; align-items:center; flex-wrap:wrap;}
+.btn{background:var(--granvia-blue); color:#fff; padding:8px 12px; border-radius:6px; border:none; cursor:pointer}
+.btn.ghost{background:transparent;color:var(--granvia-dark);border:1px solid #ddd}
+@media(max-width:980px){ .grid{grid-template-columns:1fr} .filters{flex-direction:column; align-items:flex-start} }
+.status-realizado{color:green;font-weight:700}
+.status-apto{color:#b36b00;font-weight:700}
+.status-nao{color:#a00;font-weight:700}
+select,input[type="text"]{padding:6px 8px; border-radius:6px; border:1px solid #ddd}
+.table-wrap { overflow:auto; max-height:520px; }
+.canvas-wrap{height:180px}
+.legend-item{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+.footer-note{font-size:12px;color:#666;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+ <!-- Logo embutida em base64 (sua imagem enviada) -->
+  <img class="logo" src="C:\Users\gerso\Downloads\index\LOGO GRANVIA.jpg">
+  <div>
+    <h1>Painel de Revisões - Granvia</h1>
+    <div class="small">Sistema automático — atualizado pela planilha / CSV</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="grid">
+    <main>
+      <div class="card" style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div>
+            <div class="small">Fonte de dados:</div>
+            <div style="font-weight:700">CSV local (upload)</div>
+          </div>
+          <div>
+            <input type="file" id="fileCsv" accept=".csv,text/csv" style="margin-right:8px">
+            <button class="btn" id="btnLoadLocal">Carregar CSV local</button>
+          </div>
+        </div>
+        <div style="margin-top:8px" id="lastUpdate">Última atualização: —</div>
+        <div id="hint" class="small" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <div style="font-weight:700">Indicadores</div>
+          <div class="small">Visão geral</div>
+        </div>
+        <div class="kpis" id="kpis">
+          <div class="kpi"><div class="small">Total veículos</div><h2 id="total">0</h2></div>
+          <div class="kpi"><div class="small">Clientes para contato</div><h2 id="pendentes">0</h2></div>
+          <div class="kpi"><div class="small">Não atende</div><h2 id="naoatende">0</h2></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <div style="font-weight:700">Lista de clientes</div>
+          <div class="small">Filtros & exportação</div>
+        </div>
+
+        <div class="filters">
+          <label class="small">Pesquisar: <input id="q" type="text" placeholder="nome, veículo, placa"></label>
+
+          <label class="small">Status:
+            <select id="fStatus">
+              <option value="">Todos</option>
+              <option value="REALIZADO">Realizado</option>
+              <option value="APTO">Apto</option>
+              <option value="1 ANO SEM REVISÃO">1 ano sem revisão</option>
+              <option value="NAO_ATENDE">Não atende</option>
+            </select>
+          </label>
+
+          <label class="small">Mês:
+            <select id="fMes"><option value="">Todos</option></select>
+          </label>
+
+          <label class="small">Ano:
+            <select id="fAno"><option value="">Todos</option></select>
+          </label>
+
+          <button class="btn" id="btnFiltrar">Aplicar filtros</button>
+          <button class="btn ghost" id="btnLimpar">Limpar filtros</button>
+
+          <button class="btn" id="exportCSV" style="margin-left:8px">Exportar pendentes</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tabela" aria-live="polite">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Chassi</th>
+                <th>Placa</th>
+                <th>Modelo</th>
+                <th>Data Venda</th>
+                <th>Observação</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="footer-note">Dica: Se o CSV vier do Google Sheets, use a opção "Arquivo → Publicar na web" e baixe o CSV antes de carregar aqui.</div>
+      </div>
+    </main>
+
+    <aside>
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-weight:700;margin-bottom:8px">Resumo rápido</div>
+        <div class="canvas-wrap">
+          <canvas id="chartStatus"></canvas>
+        </div>
+        <div style="margin-top:10px">
+          <div class="legend-item"><span>Realizado</span><strong id="countRealizado">0</strong></div>
+          <div class="legend-item"><span>Apto</span><strong id="countApto">0</strong></div>
+          <div class="legend-item"><span>1 ano sem revisão</span><strong id="count1Ano">0</strong></div>
+          <div class="legend-item"><span>Não atende</span><strong id="countNao">0</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">Ações</div>
+        <button class="btn" id="btnLigar">Exportar pendentes</button>
+        <button class="btn" id="btnAgendar" style="margin-top:8px">Marcar agendados</button>
+      </div>
+    </aside>
+  </div>
+</div>
+<footer class="card" style="margin-top:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+            <div>
+                <strong>Granvia</strong> — Painel de acompanhamento de revisões.
+                <div class="small">Dados carregados diretamente da planilha Google Sheets.</div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:13px; color:#666">Criado por <strong>Suelly Maria</strong></div>
+              
+            </div>
+        </div>
+    </footer>
+</div
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/*
+  Painel local-only (CSV via upload).
+  Principais responsabilidades:
+  - parse CSV robusto (virgula/; tab, com/sem aspas)
+  - normalizar headers (case-insensitive)
+  - popular filtros mês/ano dinamicamente
+  - aplicar filtros ao clicar em "Aplicar filtros"
+  - limpar filtros
+  - KPIs e gráfico refletem o conjunto FILTRADO
+*/
+
+// --------- helpers ----------
+function escapeRegExp(s){ return String(s).replace(/[.*+?^${}()|[\\\]\\]/g,'\\$&'); }
+
+// robust CSV parser: returns array of rows (each row = array of cols)
+function parseCSV(text){
+  text = String(text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines = text.split('\n').filter(l=>l.trim()!=='');
+  if(lines.length===0) return [];
+  const first = lines[0];
+  let delim = ',';
+  if(first.indexOf('\t')>=0) delim = '\t';
+  else if(first.indexOf(';')>=0) delim = ';';
+  const splitter = new RegExp(escapeRegExp(delim) + '(?=(?:[^"]*"[^"]*")*[^"]*$)');
+  return lines.map(line=>{
+    const cols = line.split(splitter).map(c=>{
+      let v = c.trim();
+      if(v.startsWith('"') && v.endsWith('"')) v = v.slice(1,-1);
+      return v.replace(/""/g,'"');
+    });
+    return cols;
+  });
+}
+
+function normalizeHeader(h){ return h?String(h).replace(/\uFEFF/g,'').trim().toLowerCase():''; }
+
+function parseDateBR(s){
+  if(!s) return null;
+  // try ISO first
+  let d = new Date(s);
+  if(!isNaN(d)) return d;
+  const m = String(s).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){
+    let day = +m[1], month = +m[2]-1, year = +m[3];
+    if(year < 100) year += 2000;
+    d = new Date(year, month, day);
+    if(!isNaN(d)) return d;
+  }
+  return null;
+}
+
+// --------- state ----------
+let tabelaDados = []; // array of objects: {Cliente,Modelo,Chassi,Placa,DataVenda,Observacao,Status,Atualizado}
+
+// chart
+let statusChart = null;
+
+// --------- UI utilities ----------
+function clearSelect(sel){ while(sel.options.length>0) sel.remove(0); }
+
+function populateMonthSelect(){
+  const sel = document.getElementById('fMes');
+  clearSelect(sel);
+  sel.add(new Option('Todos',''));
+  for(let m=1;m<=12;m++){
+    const label = new Date(2000,m-1,1).toLocaleString('pt-BR',{month:'long'});
+    sel.add(new Option(label,String(m)));
+  }
+}
+
+function populateYearSelectFromData(){
+  const sel = document.getElementById('fAno');
+  clearSelect(sel);
+  sel.add(new Option('Todos',''));
+  const anos = Array.from(new Set(tabelaDados.map(r=>{
+    const d = parseDateBR(r.DataVenda); return d?d.getFullYear():null;
+  }).filter(x=>x))).sort((a,b)=>b-a);
+  anos.forEach(a=> sel.add(new Option(String(a), String(a))));
+}
+
+function updateKPIsAndChart(filtered){
+  const realizado = filtered.filter(r=>r.Status==='REALIZADO').length;
+  const apto = filtered.filter(r=>r.Status==='APTO').length;
+  const oneYear = filtered.filter(r=>r.Status==='1 ANO SEM REVISÃO').length;
+  const nao = filtered.filter(r=>r.Status==='NAO_ATENDE').length;
+
+  document.getElementById('countRealizado').innerText = realizado;
+  document.getElementById('countApto').innerText = apto;
+  document.getElementById('count1Ano').innerText = oneYear;
+  document.getElementById('countNao').innerText = nao;
+
+  const data = [realizado, apto, oneYear, nao];
+  if(statusChart){
+    statusChart.data.datasets[0].data = data;
+    statusChart.update();
+  } else {
+    const ctx = document.getElementById('chartStatus').getContext('2d');
+    statusChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels:['Realizado','Apto','1 ano sem revisão','Não atende'],
+        datasets:[{data, backgroundColor:['#4CAF50','#F2B705','#FF8A65','#FFCDD2'], hoverOffset:6}]
+      },
+      options:{plugins:{legend:{position:'bottom'}}}
+    });
+  }
+}
+
+// --------- core: load & map ----------
+function carregarFromText(txt){
+  try{
+    const rows = parseCSV(txt);
+    if(rows.length<=1) throw new Error('CSV vazio ou inválido');
+    const headersRaw = rows.shift();
+    const headers = headersRaw.map(h=>normalizeHeader(h));
+    const idx = {}; headers.forEach((h,i)=> idx[h]=i);
+
+    const getVal = (r, names)=>{
+      for(const n of names){
+        const key = n.toLowerCase();
+        if(idx.hasOwnProperty(key) && r[idx[key]]!==undefined) return r[idx[key]].trim();
+      }
+      return '';
+    };
+
+    tabelaDados = rows.map(r=>{
+      const dataVenda = getVal(r, ['data venda','data_venda','data','data venda ']);
+      const atualizado = getVal(r, ['atualizado','atualização','atualizacao']);
+      const cliente = getVal(r, ['cliente','nome','empresa']);
+      const modelo = getVal(r, ['modelo','veiculo']);
+      const chassi = getVal(r, ['chassi']);
+      const placa = getVal(r, ['placa']);
+      const observacao = getVal(r, ['observação','observacao','obs','observacao ']);
+
+      const dias = (function(){ const d=parseDateBR(dataVenda); return d? Math.floor((Date.now()-d.getTime())/(1000*60*60*24)) : null; })();
+      const obsLow = String(observacao||'').toLowerCase();
+      let status = 'APTO';
+      if(/realiz|fez|conclu|ok/.test(obsLow)) status='REALIZADO';
+      else if(/não atende|nao atende|sem retorno|whatsapp/.test(obsLow)) status='NAO_ATENDE';
+      if((!atualizado || atualizado.trim()==='') && dias!==null && dias>=365) status='1 ANO SEM REVISÃO';
+
+      return {
+        Cliente: cliente||'—',
+        Modelo: modelo||'—',
+        Chassi: chassi||'',
+        Placa: placa||'',
+        DataVenda: dataVenda||'',
+        Observacao: observacao||'',
+        Status: status,
+        Atualizado: atualizado||''
+      };
+    });
+
+    // populate filters and render
+    populateMonthSelect();
+    populateYearSelectFromData();
+    // show all data (no filters applied automatically)
+    renderTable(tabelaDados);
+    document.getElementById('lastUpdate').innerText = 'CSV carregado: ' + new Date().toLocaleString();
+    document.getElementById('hint').innerText = '';
+  } catch(err){
+    console.error(err);
+    document.getElementById('hint').innerText = 'Erro lendo CSV: ' + (err.message||err);
+    document.getElementById('lastUpdate').innerText = 'Erro ao carregar CSV';
+  }
+}
+
+// render table for a given list and update KPIs/chart
+function renderTable(list){
+  const tbody = document.querySelector('#tabela tbody');
+  tbody.innerHTML = '';
+  list.forEach(r=>{
+    const tr = document.createElement('tr');
+    let cls='';
+    if(r.Status==='REALIZADO') cls='status-realizado';
+    if(r.Status==='APTO' || r.Status==='1 ANO SEM REVISÃO') cls='status-apto';
+    if(r.Status==='NAO_ATENDE') cls='status-nao';
+    tr.innerHTML = `<td>${escapeHtml(r.Cliente)}</td><td>${escapeHtml(r.Chassi)}</td><td>${escapeHtml(r.Placa)}</td>
+      <td>${escapeHtml(r.Modelo)}</td><td>${escapeHtml(r.DataVenda)}</td><td>${escapeHtml(r.Observacao)}</td><td class="${cls}">${r.Status}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // update top KPIs (global)
+  document.getElementById('total').innerText = tabelaDados.length;
+  document.getElementById('pendentes').innerText = tabelaDados.filter(r=> r.Status==='APTO' || r.Status==='1 ANO SEM REVISÃO').length;
+  document.getElementById('naoatende').innerText = tabelaDados.filter(r=> r.Status==='NAO_ATENDE').length;
+
+  // chart & legend reflect filtered set (list)
+  updateKPIsAndChart(list);
+  document.getElementById('resumo').innerText = `${list.length} registros exibidos`;
+}
+
+// escape html for safety when inserting into table
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// --------- filtering ----------
+function buildFilteredList(){
+  const q = (document.getElementById('q').value||'').trim().toLowerCase();
+  const statusFiltro = document.getElementById('fStatus').value;
+  const mesFiltro = document.getElementById('fMes').value;
+  const anoFiltro = document.getElementById('fAno')?.value || '';
+
+  return tabelaDados.filter(r=>{
+    if(q){
+      const s = (r.Cliente + ' ' + r.Modelo + ' ' + r.Placa + ' ' + r.Chassi).toLowerCase();
+      if(!s.includes(q)) return false;
+    }
+    if(statusFiltro && r.Status !== statusFiltro) return false;
+    if((mesFiltro || anoFiltro)){
+      const d = parseDateBR(r.DataVenda);
+      if(!d) return false;
+      if(mesFiltro && (d.getMonth()+1) !== Number(mesFiltro)) return false;
+      if(anoFiltro && d.getFullYear() !== Number(anoFiltro)) return false;
+    }
+    return true;
+  });
+}
+
+// --------- exports & actions ----------
+function exportPendentes(){
+  const lista = tabelaDados.filter(r=> r.Status==='APTO' || r.Status==='1 ANO SEM REVISÃO');
+  if(lista.length===0) return alert('Sem registros pendentes.');
+  const rows = lista.map(r=> [r.Cliente,r.Chassi,r.Placa,r.Modelo,r.DataVenda,r.Observacao,r.Status].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = ['CLIENTE,CHASSI,PLACA,MODELO,DATA_VENDA,OBSERVACAO,STATUS', ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'clientes_pendentes.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+
+// mark as agendado (example)
+function marcarAgendados(){
+  tabelaDados = tabelaDados.map(r => {
+    if(r.Status !== 'REALIZADO') r.Status = 'AGENDADO';
+    return r;
+  });
+  const filtered = buildFilteredList();
+  renderTable(filtered);
+}
+
+// --------- events wiring ----------
+document.getElementById('btnLoadLocal').addEventListener('click', ()=>{
+  const f = document.getElementById('fileCsv').files[0];
+  if(!f) return alert('Selecione um arquivo CSV antes de carregar.');
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    carregarFromText(String(e.target.result));
+  };
+  reader.onerror = ()=> alert('Erro ao ler arquivo local.');
+  reader.readAsText(f, 'UTF-8');
+});
+
+document.getElementById('btnFiltrar').addEventListener('click', ()=>{
+  const filtered = buildFilteredList();
+  renderTable(filtered);
+});
+
+document.getElementById('btnLimpar').addEventListener('click', ()=>{
+  document.getElementById('q').value = '';
+  document.getElementById('fStatus').value = '';
+  document.getElementById('fMes').value = '';
+  document.getElementById('fAno').value = '';
+  renderTable(tabelaDados);
+});
+
+document.getElementById('exportCSV').addEventListener('click', exportPendentes);
+document.getElementById('btnLigar').addEventListener('click', exportPendentes);
+document.getElementById('btnAgendar').addEventListener('click', ()=>{ marcarAgendados(); });
+
+// initialize selects basic
+populateMonthSelect();
+
+// End of script
+</script>
+</body>
+</html>
